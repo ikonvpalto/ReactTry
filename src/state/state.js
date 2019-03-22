@@ -3,7 +3,8 @@ import {createStore} from "redux"
 const Actions = {
     INPUT_LOCATION: "INPUT_LOCATION",
     // FORCE_SEARCH: "FORCE_SEARCH",
-    GET_WEATHER: "GET_WEATHER"
+    GET_WEATHER: "GET_WEATHER",
+    ERROR: "ERROR"
 }
 
 const initialState = {
@@ -28,6 +29,8 @@ function weather(state = initialState, action) {
                 weather: action.weather,
                 errorMessage: undefined
             });
+        case Actions.ERROR:
+            return Object.assign({}, state, {errorMessage: action.errorMessage});
         default:
             return state;
     }

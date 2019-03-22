@@ -5,10 +5,8 @@ import {debounce} from "lodash"
 class App extends Component {
     constructor(props) {
         super(props);
-        const updateWeatherInfo = debounce(async () => {
-            
-        }, 500);
-        this.unsubscribe = Store.subscribe(async () => this.setState(Store.getState()));
+        const weatherInfoReciever = new WeatherInfoReciever();
+        this.unsubscribe = Store.subscribe(weatherInfoReciever.getWeatherInfo);
     }
 
     render() {
@@ -19,6 +17,10 @@ class App extends Component {
                 <TempratureColor/>
             </div>
         );
+    }
+
+    componentWillUnmount() {
+        this.unsubscribe();
     }
 }
 
@@ -106,35 +108,61 @@ class TempratureColor extends Component {
     }
 }
 
-async function recieveWeatherInfo(location) {
-    if (location) {
-        return;
+class WeatherInfoReciever {
+    constructor() {
+        this._oldLocation = Store.getState().location;
     }
-    try {
-        const url = `https://api.aerisapi.com/observations/${location}?&format=json&filter=allstations&limit=1&fields=ob.weather,ob.tempC&client_id=fD3yzDEwR2Jv2fzSn24vu&client_secret=wlcVokVwyBSlMVAMdnHMrwIL1ducoASIXpNQZPj0`;
-        await fetch(url)
+
+    getWeatherInfo = debounce(async () => {        
+        const location = Store.getState().location;
+        if (location !== this._oldLocation) {
+            this._oldLocation = location;
+            const info = await this._recieveWeatherInfoForLocation(location);
+            Store.dispatch(info);
+        }
+    }, 400);
+
+    async _recieveWeatherInfoForLocation(location) {
+        if (!location) {
+            return;
+        }
+    
+        const url = this._getWeatherUrl(location);
+        return await (fetch(url)
             .then(response => {
-                if (response.status != 200) {
-                    throw `Cannot fetch weather (${response.status})`;
+                if (response.status !== 200) {
+                    throw new Error(`Cannot fetch weather (${response.status})`);
                 }
+
                 return response.json();
             })
             .then(ans => {
                 if (!ans.success) {
-                    throw ans.error.description;
+                    throw new Error(ans.error.description);
                 }
-                
-                return {
-                    location: location,
-                    errorMessage: undefined,
-                    temp: ans.response.ob.tempC,
-                    weather: ans.response.ob.weather,
-                    lastSuccessLocation: location
-                };
+
+                return this._getWeatherInfo(ans.response.ob);
             })
-            .catch(error => { return {errorMessage: error} });
-    } catch (e) {
-        return {errorMessage: e};
+            .catch(this._getError));
+    }
+
+    _getWeatherUrl(location) {
+        return `https://api.aerisapi.com/observations/${location}?&format=json&filter=allstations&limit=1&fields=ob.weather,ob.tempC&client_id=fD3yzDEwR2Jv2fzSn24vu&client_secret=wlcVokVwyBSlMVAMdnHMrwIL1ducoASIXpNQZPj0`;
+    }
+
+    _getError(error) {
+        return {
+            type: Actions.ERROR,
+            errorMessage: error.message
+        };
+    }
+
+    _getWeatherInfo(info) {
+        return {
+            type: Actions.GET_WEATHER,
+            temp: info.tempC,
+            weather: info.weather
+        }
     }
 }
 
