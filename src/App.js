@@ -91,16 +91,22 @@ class TempratureColor extends Component {
     }
 
     render() {
-        const style = {
-            width: 100,
-            height: 100
-        };
+        let style;
         if (this.state.color) {
-            style.color = this.state.color;
+            style = {
+                width: 100,
+                height: 100,
+                color: this.state.color
+            }
         } else {
-            style.display = "none";
+            style = {
+                display: 'none'
+            };
         }
-        return (<div style={this.state}></div>);
+        const el = <div style={this.state}></div>;
+        console.log(style);
+        console.log(el);
+        return el;
     }
 
     componentWillUnmount() {
